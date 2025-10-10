@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://cinib3gp2wkxs"]
+
+[node name="Projectile" type="Node3D"]
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+skeleton = NodePath("../CollisionShape3D")

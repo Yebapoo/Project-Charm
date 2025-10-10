@@ -1,0 +1,150 @@
+extends CharacterBody3D
+
+@export_group("Keybinds")
+@export_subgroup("Movement")
+@export var move_left: String = "a_key"
+@export var move_right: String = "d_key"
+@export var move_forward: String = "w_key"
+@export var move_backward: String = "s_key"
+@export var crouch: String = "c_key"
+@export var jump: String = "space_key"
+
+
+@export_subgroup("Interface")
+@export var free_cursor: String = "esc_key"
+@export var log_data: String = "p_key"
+
+@export_group("Settings")
+@export var speed: float = 5.0
+@export var jump_velocity: float = 4.5
+@export var mouse_sensitivity: float = 0.3
+@export var default_height: float = 2.0
+@export var crouch_height: float = 1.0
+@export var transition_speed: float = 10.0
+@export var ProjectileScene: PackedScene
+@export var current_speed: float = speed
+@export var current_jump_velocity: float = jump_velocity
+
+var gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity")
+
+var head: Node3D
+var ray: RayCast3D
+var camera: Camera3D
+var crouched: bool = false
+@onready var collision_shape: CollisionShape3D = $CollisionShape3D
+@onready var mesh_shape: MeshInstance3D = $MeshInstance3D
+var original_camera_y: float
+var target_height: float
+
+@export var fire_rate: float = 0.5
+var can_shoot: bool = true
+
+const ACTION_SHOOT = "shoot"
+
+# Reference to our power-up manager node
+@onready var powerup_manager = $PowerUpManager
+
+func _ready():
+	head = get_node("Head")
+	camera = get_node("Head/Camera3D")
+	ray = get_node("Head/Camera3D/RayCast3D")
+
+# Let the powerup manager know who owns it
+	if powerup_manager and powerup_manager.has_method("init"):
+		powerup_manager.init(self)
+
+	if not (collision_shape.shape is CapsuleShape3D and mesh_shape.mesh is CapsuleMesh):
+		push_error("Assigned nodes must have CapsuleShape3D and CapsuleMesh resources.")
+		return
+
+	original_camera_y = head.position.y
+	target_height = default_height
+
+	Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+		
+		
+func _input(event: InputEvent):
+	#Mouse Movements
+	if event is InputEventMouseMotion and Input.mouse_mode == Input.MOUSE_MODE_CAPTURED:
+		rotate_y(deg_to_rad(-event.relative.x * mouse_sensitivity))
+		head.rotate_x(deg_to_rad(-event.relative.y * mouse_sensitivity))
+		head.rotation.x = clamp(head.rotation.x, deg_to_rad(-89), deg_to_rad(89))
+		
+	#Key Presses
+	if event is InputEventKey:
+		if Input.is_action_just_pressed(free_cursor):
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		if Input.is_action_just_pressed(log_data):
+			print("Speed: ", current_speed)
+			print("Jump: ", current_jump_velocity)
+			
+			
+	#Mouse Clicks
+	if event is InputEventMouseButton and event.is_pressed() and Input.mouse_mode == Input.MOUSE_MODE_VISIBLE:
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+
+func _physics_process(delta):
+	if not is_on_floor():
+		velocity.y -= gravity * delta
+
+	if Input.is_action_just_pressed(jump) and is_on_floor():
+		velocity.y = current_jump_velocity
+		#print(current_speed)
+
+	crouched = Input.is_action_pressed(crouch)
+	target_height = crouch_height if crouched else default_height
+
+	var current_height = collision_shape.shape.height
+	var new_height = lerp(current_height, target_height, delta * transition_speed)
+
+	collision_shape.shape.height = new_height
+	mesh_shape.mesh.height = new_height
+
+	var new_camera_y = lerp(
+		head.position.y,
+		original_camera_y * (new_height / default_height),
+		delta * transition_speed
+	)
+	head.position.y = new_camera_y
+
+# Movement using current_speed
+	var input_dir = Input.get_vector(move_left, move_right, move_forward, move_backward)
+	var direction = (transform.basis * Vector3(input_dir.x, 0, input_dir.y)).normalized()
+	if direction and not crouched:
+		velocity.x = direction.x * current_speed
+		velocity.z = direction.z * current_speed
+	elif direction and crouched:
+		velocity.x = direction.x * current_speed * 0.75
+		velocity.z = direction.z * current_speed * 0.75
+	else:
+		velocity.x = move_toward(velocity.x, 0, current_speed)
+		velocity.z = move_toward(velocity.z, 0, current_speed)
+
+	move_and_slide()
+
+func shoot():
+	if not can_shoot:
+		return
+
+	can_shoot = false
+	var projectile_instance = ProjectileScene.instantiate()
+	get_tree().root.add_child(projectile_instance)
+	projectile_instance.global_transform = $Head/Muzzle.global_transform
+
+	get_tree().create_timer(fire_rate).timeout.connect(func(): can_shoot = true)
+
+# Wrapper so power-ups can call a single function
+func apply_power_up(effect_name: String, value: float, duration: float) -> void:
+	if powerup_manager:
+		powerup_manager.apply_power_up(effect_name, value, duration)
+func apply_speed_boost(amount: float, duration: float) -> void:
+	current_speed = speed * amount
+	get_tree().create_timer(duration).timeout.connect(func(): current_speed = speed)
+	
+func apply_jump_boost(amount: float, duration: float) -> void:
+	current_jump_velocity = jump_velocity * amount
+	get_tree().create_timer(duration).timeout.connect(func(): current_jump_velocity = jump_velocity)
+	
+	
+	
