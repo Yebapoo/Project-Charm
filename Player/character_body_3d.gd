@@ -13,6 +13,7 @@ extends CharacterBody3D
 @export_subgroup("Interface")
 @export var free_cursor: String = "esc_key"
 @export var log_data: String = "p_key"
+@export var test_key: String = "f_key"
 
 @export_group("Settings")
 @export var speed: float = 5.0
@@ -146,6 +147,10 @@ func shoot():
 func apply_power_up(effect_name: String, value: float, duration: float) -> void:
 	if powerup_manager:
 		powerup_manager.apply_power_up(effect_name, value, duration)
+		
+		
+		
+		
 #func apply_speed_boost(amount: float, duration: float) -> void:
 	#current_speed = speed * amount
 	#get_tree().create_timer(duration).timeout.connect(func(): current_speed = speed)
