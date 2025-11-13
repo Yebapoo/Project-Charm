@@ -48,6 +48,7 @@ const ACTION_SHOOT = "shoot"
 @onready var powerup_manager = $PowerUpManager
 @onready var debuff_manager = $DebuffManager
 
+
 func _ready():
 	head = get_node("Head")
 	camera = get_node("Head/Camera3D")
@@ -78,6 +79,7 @@ func _input(event: InputEvent):
 		rotate_y(deg_to_rad(-event.relative.x * current_mouse_sensitivity))
 		head.rotate_x(deg_to_rad(-event.relative.y * current_mouse_sensitivity))
 		head.rotation.x = clamp(head.rotation.x, deg_to_rad(-89), deg_to_rad(89))
+
 		
 	#Key Presses
 	if event is InputEventKey:
