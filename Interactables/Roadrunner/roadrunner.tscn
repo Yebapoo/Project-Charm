@@ -7,6 +7,8 @@
 height = 1.0
 
 [node name="Roadrunner" type="CharacterBody3D"]
+collision_layer = 4
+collision_mask = 5
 script = ExtResource("1_r1xgt")
 
 [node name="CollisionShape3D" type="CollisionShape3D" parent="."]
